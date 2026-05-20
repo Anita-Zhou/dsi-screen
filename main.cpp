@@ -37,23 +37,26 @@ protected:
             if(ev.type==EV_ABS){
                 if(ev.code==ABS_MT_POSITION_X) cx=ev.value;
                 if(ev.code==ABS_MT_POSITION_Y) cy=ev.value;
+                // latch start point on first valid position while finger is down
+                if(touching && sx<0 && cx>=0 && cy>=0){ sx=cx; sy=cy; }
             } else if(ev.type==EV_KEY&&ev.code==BTN_TOUCH){
                 if(ev.value==1){
                     touching=true;
-                    sx=(cx>=0)?cx:-1; sy=(cy>=0)?cy:-1;
+                    sx=-1; sy=-1;   // reset; position events will set it
                 } else if(ev.value==0&&touching){
                     touching=false;
-                    if(cx<0||cy<0||sx<0||sy<0){sx=sy=-1;continue;}
-                    int dx=abs(cx-sx),dy=abs(cy-sy);
-                    if(dx<30&&dy<30){
-                        struct timespec now; clock_gettime(CLOCK_MONOTONIC,&now);
-                        long ms=(now.tv_sec-lt.tv_sec)*1000+(now.tv_nsec-lt.tv_nsec)/1000000;
-                        if(ms<400&&lt.tv_sec!=0){emit doubleTappedAt(cx,cy);lt={0,0};}
-                        else{emit tappedAt(cx,cy);lt=now;}
-                    } else if(dy>30){
-                        emit swiped(cy-sy>0?1:-1);lt={0,0};
+                    if(cx>=0&&cy>=0&&sx>=0&&sy>=0){
+                        int dx=abs(cx-sx),dy=abs(cy-sy);
+                        if(dy>30){
+                            emit swiped(cy-sy>0?1:-1);lt={0,0};
+                        } else if(dx<30&&dy<30){
+                            struct timespec now; clock_gettime(CLOCK_MONOTONIC,&now);
+                            long ms=(now.tv_sec-lt.tv_sec)*1000+(now.tv_nsec-lt.tv_nsec)/1000000;
+                            if(ms<400&&lt.tv_sec!=0){emit doubleTappedAt(cx,cy);lt={0,0};}
+                            else{emit tappedAt(cx,cy);lt=now;}
+                        }
                     }
-                    sx=sy=-1;
+                    cx=cy=sx=sy=-1;  // full reset so next gesture starts clean
                 }
             }
         }
@@ -404,10 +407,11 @@ private:
         if(selectedSkill>=0){
             Skill&sk=skills[selectedSkill];
             QFont inf;inf.setPixelSize(15);p.setFont(inf);p.setPen(QColor(210,210,210));
-            p.drawText(QRect(MX,barTop,width()/2,BAR_H),Qt::AlignVCenter|Qt::AlignLeft,sk.name);
-            QFont pf2;pf2.setPixelSize(13);p.setFont(pf2);
+            QString info=sk.name+"  ";
+            p.drawText(QRect(MX,barTop,width()-200,BAR_H),Qt::AlignVCenter|Qt::AlignLeft,info);
+            int nameW=p.fontMetrics().horizontalAdvance(info);
             p.setPen(sk.owned?QColor(80,200,120):QColor(255,215,0));
-            p.drawText(QRect(MX,barTop+BAR_H/2-2,200,BAR_H/2),Qt::AlignTop|Qt::AlignLeft,
+            p.drawText(QRect(MX+nameW,barTop,width()-200-nameW,BAR_H),Qt::AlignVCenter|Qt::AlignLeft,
                        sk.owned?"已拥有":QString("%1 金币").arg(sk.price));
 
             QRect btn=buyBtnRect();
