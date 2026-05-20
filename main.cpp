@@ -7,7 +7,9 @@
 #include <QTimer>
 #include <QThread>
 #include <QTime>
+#include <QDate>
 #include <QFile>
+#include <QTextStream>
 #include <QObject>
 
 #include <linux/input.h>
@@ -80,100 +82,90 @@ static const int WORK_TOTAL_FRAMES = 15 * 7;
 
 // ───────────────────────── Icon painters ────────────────────────
 static void drawPerson(QPainter &p, QPointF c) {
-    p.drawEllipse(c + QPointF(0, -22), 13.0, 13.0);
+    p.drawEllipse(c + QPointF(0,-22), 13.0, 13.0);
     QPainterPath body;
-    body.moveTo(c + QPointF(-18, 18));
-    body.arcTo(QRectF(c.x()-18, c.y()-2, 36, 36), 180, -180);
+    body.moveTo(c+QPointF(-18,18)); body.arcTo(QRectF(c.x()-18,c.y()-2,36,36),180,-180);
     p.drawPath(body);
 }
 static void drawWifi(QPainter &p, QPointF c) {
-    for (int i = 3; i >= 1; i--) {
-        float r = i * 13.0f;
-        p.drawArc(QRectF(c.x()-r, c.y()-r, r*2, r*2), 30*16, 120*16);
-    }
+    for (int i=3;i>=1;i--) { float r=i*13.f; p.drawArc(QRectF(c.x()-r,c.y()-r,r*2,r*2),30*16,120*16); }
     p.setBrush(p.pen().color()); p.setPen(Qt::NoPen);
-    p.drawEllipse(c + QPointF(0,3), 3.5, 3.5);
-    p.setPen(QPen(QColor(255,255,255), 2.5)); p.setBrush(Qt::NoBrush);
+    p.drawEllipse(c+QPointF(0,3),3.5,3.5);
+    p.setPen(QPen(QColor(255,255,255),2.5)); p.setBrush(Qt::NoBrush);
 }
 static void drawBluetooth(QPainter &p, QPointF c) {
     QPainterPath bp;
-    bp.moveTo(c + QPointF(-12, -12));
-    bp.lineTo(c + QPointF(10,   6));
-    bp.lineTo(c + QPointF(-12,  20));
-    bp.moveTo(c + QPointF(10,  -6));
-    bp.lineTo(c + QPointF(-12,  8));
-    bp.moveTo(c + QPointF(0,  -22));
-    bp.lineTo(c + QPointF(0,   22));
+    bp.moveTo(c+QPointF(-12,-12)); bp.lineTo(c+QPointF(10,6));
+    bp.lineTo(c+QPointF(-12,20)); bp.moveTo(c+QPointF(10,-6));
+    bp.lineTo(c+QPointF(-12,8));  bp.moveTo(c+QPointF(0,-22)); bp.lineTo(c+QPointF(0,22));
     p.drawPath(bp);
 }
 static void drawSliders(QPainter &p, QPointF c) {
-    int offsets[3] = {-8, 4, -4};
-    for (int i = 0; i < 3; i++) {
-        float x = c.x() - 18 + i * 18;
-        p.drawLine(QPointF(x, c.y()-18), QPointF(x, c.y()+18));
-        float hy = c.y() + offsets[i];
-        p.drawLine(QPointF(x-7, hy), QPointF(x+7, hy));
+    int offsets[3]={-8,4,-4};
+    for (int i=0;i<3;i++) {
+        float x=c.x()-18+i*18;
+        p.drawLine(QPointF(x,c.y()-18),QPointF(x,c.y()+18));
+        float hy=c.y()+offsets[i];
+        p.drawLine(QPointF(x-7,hy),QPointF(x+7,hy));
         p.setBrush(QColor(30,30,30)); p.setPen(Qt::NoPen);
-        p.drawEllipse(QPointF(x, hy), 4.5, 4.5);
-        p.setPen(QPen(QColor(255,255,255), 2.5)); p.setBrush(Qt::NoBrush);
+        p.drawEllipse(QPointF(x,hy),4.5,4.5);
+        p.setPen(QPen(QColor(255,255,255),2.5)); p.setBrush(Qt::NoBrush);
     }
 }
 static void drawWaveform(QPainter &p, QPointF c) {
     QPainterPath wp;
-    wp.moveTo(c + QPointF(-30,  0));
-    wp.lineTo(c + QPointF(-15,  0));
-    wp.lineTo(c + QPointF( -8,-20));
-    wp.lineTo(c + QPointF(  0, 18));
-    wp.lineTo(c + QPointF(  8,-12));
-    wp.lineTo(c + QPointF( 15,  0));
-    wp.lineTo(c + QPointF( 30,  0));
+    wp.moveTo(c+QPointF(-30,0)); wp.lineTo(c+QPointF(-15,0));
+    wp.lineTo(c+QPointF(-8,-20)); wp.lineTo(c+QPointF(0,18));
+    wp.lineTo(c+QPointF(8,-12)); wp.lineTo(c+QPointF(15,0)); wp.lineTo(c+QPointF(30,0));
     p.drawPath(wp);
 }
 static void drawRefresh(QPainter &p, QPointF c) {
-    float r = 17;
-    p.drawArc(QRectF(c.x()-r, c.y()-r, r*2, r*2), 40*16, 140*16);
-    p.drawArc(QRectF(c.x()-r, c.y()-r, r*2, r*2), 220*16, 140*16);
-    // arrow heads
-    auto arrow = [&](float angDeg, float dir) {
-        float ang = angDeg * M_PI / 180.0f;
-        QPointF tip(c.x() + r*cos(ang), c.y() - r*sin(ang));
-        float a2 = (angDeg + dir*30) * M_PI / 180.0f;
-        QPointF a(c.x() + (r-8)*cos(a2), c.y() - (r-8)*sin(a2));
-        float a3 = (angDeg + dir*30) * M_PI / 180.0f;
-        QPointF b(c.x() + (r+8)*cos(a3), c.y() - (r+8)*sin(a3));
-        (void)b;
-        p.drawLine(tip, a);
+    float r=17;
+    p.drawArc(QRectF(c.x()-r,c.y()-r,r*2,r*2),40*16,140*16);
+    p.drawArc(QRectF(c.x()-r,c.y()-r,r*2,r*2),220*16,140*16);
+    auto arrow=[&](float angDeg,float dir){
+        float ang=angDeg*M_PI/180.f;
+        QPointF tip(c.x()+r*cos(ang),c.y()-r*sin(ang));
+        float a2=(angDeg+dir*30)*M_PI/180.f;
+        QPointF a(c.x()+(r-8)*cos(a2),c.y()-(r-8)*sin(a2));
+        p.drawLine(tip,a);
     };
-    arrow(180, -1); arrow(0, 1);
+    arrow(180,-1); arrow(0,1);
 }
 
 // ───────────────────────── SwipeScreen ──────────────────────────
+static const QString COIN_FILE = "/home/bianbu/.dsi_coins";
+
 class SwipeScreen : public QWidget {
     Q_OBJECT
 public:
     SwipeScreen() : current(0), frame(0), workCount(0),
                     animState(AnimState::Idle), cpuUsage(0),
-                    prevCpuTotal(0), prevCpuIdle(0) {
+                    prevCpuTotal(0), prevCpuIdle(0),
+                    totalCoins(0), todayEarned(0) {
 
-        // Animation spritesheets
         sheets[0].load("/home/bianbu/Desktop/dragon/idle.png");
         sheets[1].load("/home/bianbu/Desktop/dragon/idle2heart.png");
         sheets[2].load("/home/bianbu/Desktop/dragon/heart.png");
         sheets[3].load("/home/bianbu/Desktop/dragon/idle2work.png");
         sheets[4].load("/home/bianbu/Desktop/dragon/work.png");
 
-        // Animation timer 7fps
         animTimer = new QTimer(this);
         animTimer->setInterval(143);
         connect(animTimer, &QTimer::timeout, this, &SwipeScreen::nextFrame);
         animTimer->start();
 
-        // System info timer 1s
         sysTimer = new QTimer(this);
         sysTimer->setInterval(1000);
         connect(sysTimer, &QTimer::timeout, this, &SwipeScreen::updateSysInfo);
         sysTimer->start();
         updateSysInfo();
+
+        msgTimer = new QTimer(this);
+        msgTimer->setSingleShot(true);
+        connect(msgTimer, &QTimer::timeout, this, [this]{ coinMsg.clear(); update(); });
+
+        loadCoins();
 
         setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
         showFullScreen();
@@ -191,20 +183,26 @@ public slots:
         if (current == 1) { animState = AnimState::Idle; frame = 0; }
         update();
     }
+
     void onTap() {
-        if (current != 1 || animState != AnimState::Idle) return;
+        if (current != 1) return;
+        earnCoins(1);
+        if (animState != AnimState::Idle) return;
         animState = AnimState::ToHeart; frame = 0; update();
     }
+
     void onDoubleTap() {
         if (current != 1) return;
+        earnCoins(2);
         if (animState==AnimState::ToWork||animState==AnimState::Work||
             animState==AnimState::FromWork) return;
         animState = AnimState::ToWork; frame = 0; workCount = 0; update();
     }
+
     void nextFrame() {
         if (current != 1) return;
         switch (animState) {
-        case AnimState::Idle:     frame = (frame+1)%18; break;
+        case AnimState::Idle:     frame=(frame+1)%18; break;
         case AnimState::ToHeart:  if(++frame>=7){animState=AnimState::Heart;frame=0;} break;
         case AnimState::Heart:    if(++frame>=17){animState=AnimState::FromHeart;frame=6;} break;
         case AnimState::FromHeart:if(--frame<0){animState=AnimState::Idle;frame=0;} break;
@@ -217,21 +215,21 @@ public slots:
         }
         update();
     }
+
     void updateSysInfo() {
         currentTime = QTime::currentTime().toString("HH:mm");
         QFile f("/proc/stat");
         if (f.open(QIODevice::ReadOnly)) {
-            QString line = f.readLine();
-            f.close();
+            QString line = f.readLine(); f.close();
             QStringList parts = line.split(' ', Qt::SkipEmptyParts);
             if (parts.size() >= 5) {
-                long user=parts[1].toLong(), nice=parts[2].toLong(),
-                     sys=parts[3].toLong(), idle=parts[4].toLong(),
+                long user=parts[1].toLong(),nice=parts[2].toLong(),
+                     sys=parts[3].toLong(),idle=parts[4].toLong(),
                      iow=parts.size()>5?parts[5].toLong():0;
-                long total = user+nice+sys+idle+iow;
-                long dt = total - prevCpuTotal, di = idle - prevCpuIdle;
-                if (dt > 0) cpuUsage = (dt-di)*100/dt;
-                prevCpuTotal = total; prevCpuIdle = idle;
+                long total=user+nice+sys+idle+iow;
+                long dt=total-prevCpuTotal, di=idle-prevCpuIdle;
+                if (dt>0) cpuUsage=(dt-di)*100/dt;
+                prevCpuTotal=total; prevCpuIdle=idle;
             }
         }
         if (current == 0) update();
@@ -243,124 +241,165 @@ protected:
         p.setRenderHint(QPainter::Antialiasing);
         if (current == 0) paintSettings(p);
         else if (current == 1) paintDragon(p);
-        else { p.fillRect(rect(), QColor(180,200,255)); paintDots(p); }
+        else { p.fillRect(rect(),QColor(180,200,255)); paintDots(p); }
     }
 
 private:
-    // ── Settings page ──────────────────────────────────────────
+    // ── Coin logic ───────────────────────────────────────────────
+    void loadCoins() {
+        QFile f(COIN_FILE);
+        if (!f.open(QIODevice::ReadOnly)) return;
+        QTextStream in(&f);
+        QString date;
+        in >> totalCoins >> todayEarned >> date;
+        if (date != QDate::currentDate().toString("yyyy-MM-dd"))
+            todayEarned = 0;
+        lastDate = QDate::currentDate().toString("yyyy-MM-dd");
+    }
+
+    void saveCoins() {
+        QFile f(COIN_FILE);
+        if (!f.open(QIODevice::WriteOnly|QIODevice::Truncate)) return;
+        QTextStream out(&f);
+        out << totalCoins << " " << todayEarned << " "
+            << QDate::currentDate().toString("yyyy-MM-dd");
+    }
+
+    void earnCoins(int amount) {
+        QString today = QDate::currentDate().toString("yyyy-MM-dd");
+        if (today != lastDate) { todayEarned = 0; lastDate = today; }
+
+        if (todayEarned >= 10) {
+            coinMsg = "当前获得金币已达上限";
+            msgTimer->start(2000);
+            update(); return;
+        }
+        int earn = qMin(amount, 10 - todayEarned);
+        totalCoins  += earn;
+        todayEarned += earn;
+        saveCoins();
+
+        if (todayEarned >= 10) {
+            coinMsg = "当前获得金币已达上限";
+            msgTimer->start(2000);
+        }
+        update();
+    }
+
+    // ── Dragon page ──────────────────────────────────────────────
+    void paintDragon(QPainter &p) {
+        p.fillRect(rect(), Qt::black);
+
+        // sprite
+        int sheetIdx=0;
+        switch(animState){
+        case AnimState::Idle:                               sheetIdx=0;break;
+        case AnimState::ToHeart:case AnimState::FromHeart:  sheetIdx=1;break;
+        case AnimState::Heart:                              sheetIdx=2;break;
+        case AnimState::ToWork: case AnimState::FromWork:   sheetIdx=3;break;
+        case AnimState::Work:                               sheetIdx=4;break;
+        }
+        QPixmap &sheet=sheets[sheetIdx];
+        if (!sheet.isNull()) {
+            QPixmap px=sheet.copy(frame*300,0,300,380);
+            p.drawPixmap((width()-300)/2,(height()-380)/2,px);
+        }
+
+        // ── Coin display (top-right) ──
+        int coinR=14;
+        int cx=width()-coinR-10, cy=coinR+10;
+        // outer gold circle
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor(255,215,0));
+        p.drawEllipse(QPointF(cx,cy),coinR,coinR);
+        // inner ring
+        p.setBrush(Qt::NoBrush);
+        p.setPen(QPen(QColor(184,134,11),2));
+        p.drawEllipse(QPointF(cx,cy),coinR-4,coinR-4);
+        // coin count
+        QFont cf; cf.setPixelSize(16); cf.setBold(true);
+        p.setFont(cf); p.setPen(Qt::white);
+        QString coinStr = QString::number(totalCoins);
+        p.drawText(QRect(width()-coinR*2-70, cy-12, 46, 24),
+                   Qt::AlignVCenter|Qt::AlignRight, coinStr);
+
+        // ── Limit message ──
+        if (!coinMsg.isEmpty()) {
+            QFont mf; mf.setPixelSize(13);
+            p.setFont(mf);
+            QRect msgRect(0, height()-60, width(), 24);
+            p.setPen(Qt::NoPen);
+            p.setBrush(QColor(0,0,0,160));
+            p.drawRoundedRect(msgRect.adjusted(width()/2-110,-4,-(width()/2-110),4),8,8);
+            p.setPen(QColor(255,220,50));
+            p.drawText(msgRect, Qt::AlignCenter, coinMsg);
+        }
+
+        paintDots(p);
+    }
+
+    // ── Settings page ────────────────────────────────────────────
     void paintSettings(QPainter &p) {
         p.fillRect(rect(), Qt::black);
 
-        // ── Header ──
-        QFont hf; hf.setPixelSize(17);
-        p.setFont(hf); p.setPen(QColor(200,200,200));
-        p.drawText(QRect(18,0,400,46), Qt::AlignVCenter|Qt::AlignLeft,
+        QFont hf; hf.setPixelSize(17); p.setFont(hf);
+        p.setPen(QColor(200,200,200));
+        p.drawText(QRect(18,0,400,46),Qt::AlignVCenter|Qt::AlignLeft,
                    QString("设置    CPU %1%").arg(cpuUsage));
+        p.drawText(QRect(width()-160,0,100,46),Qt::AlignVCenter|Qt::AlignRight,currentTime);
 
-        // time
-        QFont tf; tf.setPixelSize(17); tf.setBold(false);
-        p.setFont(tf);
-        p.drawText(QRect(width()-160,0,100,46), Qt::AlignVCenter|Qt::AlignRight,
-                   currentTime);
-
-        // small wifi icon in header
-        p.setPen(QPen(QColor(200,200,200), 2.0));
-        QPointF wc(width()-28, 23);
-        for (int i=2; i>=1; i--) {
-            float r = i*7.0f;
-            p.drawArc(QRectF(wc.x()-r,wc.y()-r,r*2,r*2), 30*16, 120*16);
-        }
+        p.setPen(QPen(QColor(200,200,200),2.0));
+        QPointF wc(width()-28,23);
+        for(int i=2;i>=1;i--){float r=i*7.f;p.drawArc(QRectF(wc.x()-r,wc.y()-r,r*2,r*2),30*16,120*16);}
         p.setBrush(QColor(200,200,200)); p.setPen(Qt::NoPen);
-        p.drawEllipse(wc+QPointF(0,3), 2.5, 2.5);
-        p.setPen(QPen(QColor(200,200,200), 2.0)); p.setBrush(Qt::NoBrush);
+        p.drawEllipse(wc+QPointF(0,3),2.5,2.5);
+        p.setPen(QPen(QColor(200,200,200),2.0)); p.setBrush(Qt::NoBrush);
+        p.setPen(QColor(40,40,40)); p.drawLine(0,46,width(),46);
 
-        // divider
-        p.setPen(QColor(40,40,40));
-        p.drawLine(0, 46, width(), 46);
+        const int COLS=3,ROWS=2,mx=18,my=8,gx=12,gy=12,headerH=48,dotsH=30;
+        int gridTop=headerH+my, gridH=height()-headerH-dotsH-my*2;
+        int tileW=(width()-2*mx-(COLS-1)*gx)/COLS;
+        int tileH=(gridH-(ROWS-1)*gy)/ROWS;
 
-        // ── Grid ──
-        const int COLS=3, ROWS=2;
-        int mx=18, my=8, gx=12, gy=12;
-        int headerH=48, dotsH=30;
-        int gridTop = headerH+my;
-        int gridH   = height()-headerH-dotsH-my*2;
-        int tileW   = (width()-2*mx-(COLS-1)*gx)/COLS;
-        int tileH   = (gridH-(ROWS-1)*gy)/ROWS;
-
-        struct { const char *label; void(*draw)(QPainter&,QPointF); } items[6] = {
-            {"个人中心", drawPerson},
-            {"WiFi",    drawWifi},
-            {"蓝牙",    drawBluetooth},
-            {"通用设置", drawSliders},
-            {"频道配置", drawWaveform},
-            {"频度查询", drawRefresh},
+        struct { const char *label; void(*draw)(QPainter&,QPointF); } items[6]={
+            {"个人中心",drawPerson},{"WiFi",drawWifi},{"蓝牙",drawBluetooth},
+            {"通用设置",drawSliders},{"频道配置",drawWaveform},{"频度查询",drawRefresh},
         };
-
-        for (int i=0; i<6; i++) {
-            int col=i%3, row=i/3;
-            int tx = mx + col*(tileW+gx);
-            int ty = gridTop + row*(tileH+gy);
-            QRect tile(tx, ty, tileW, tileH);
-
-            // card bg
-            p.setPen(Qt::NoPen);
-            p.setBrush(QColor(28,28,30));
-            p.drawRoundedRect(tile, 16, 16);
-
-            // icon
+        for(int i=0;i<6;i++){
+            int col=i%3,row=i/3;
+            int tx=mx+col*(tileW+gx), ty=gridTop+row*(tileH+gy);
+            QRect tile(tx,ty,tileW,tileH);
+            p.setPen(Qt::NoPen); p.setBrush(QColor(28,28,30));
+            p.drawRoundedRect(tile,16,16);
             QPointF ic(tx+tileW/2.0, ty+tileH/2.0-14);
-            p.setPen(QPen(QColor(230,230,230), 2.5));
-            p.setBrush(Qt::NoBrush);
-            items[i].draw(p, ic);
-
-            // label
-            QFont lf; lf.setPixelSize(13);
-            p.setFont(lf); p.setPen(QColor(200,200,200));
-            p.drawText(QRect(tx, ty+tileH-32, tileW, 26),
-                       Qt::AlignHCenter|Qt::AlignVCenter, items[i].label);
-        }
-
-        paintDots(p);
-    }
-
-    // ── Dragon page ─────────────────────────────────────────────
-    void paintDragon(QPainter &p) {
-        p.fillRect(rect(), Qt::black);
-        int sheetIdx = 0;
-        switch (animState) {
-        case AnimState::Idle:                               sheetIdx=0; break;
-        case AnimState::ToHeart: case AnimState::FromHeart: sheetIdx=1; break;
-        case AnimState::Heart:                              sheetIdx=2; break;
-        case AnimState::ToWork:  case AnimState::FromWork:  sheetIdx=3; break;
-        case AnimState::Work:                               sheetIdx=4; break;
-        }
-        QPixmap &sheet = sheets[sheetIdx];
-        if (!sheet.isNull()) {
-            QPixmap px = sheet.copy(frame*300,0,300,380);
-            p.drawPixmap((width()-300)/2,(height()-380)/2,px);
+            p.setPen(QPen(QColor(230,230,230),2.5)); p.setBrush(Qt::NoBrush);
+            items[i].draw(p,ic);
+            QFont lf; lf.setPixelSize(13); p.setFont(lf);
+            p.setPen(QColor(200,200,200));
+            p.drawText(QRect(tx,ty+tileH-32,tileW,26),Qt::AlignHCenter|Qt::AlignVCenter,items[i].label);
         }
         paintDots(p);
     }
 
-    // ── Page indicator dots ──────────────────────────────────────
     void paintDots(QPainter &p) {
-        int dotR=7, spacing=24;
-        int totalW = 3*dotR*2 + 2*spacing;
+        int dotR=7,spacing=24;
+        int totalW=3*dotR*2+2*spacing;
         int bx=(width()-totalW)/2, by=height()-22;
-        for (int i=0; i<3; i++) {
-            p.setBrush(i==current ? Qt::white : QColor(255,255,255,70));
+        for(int i=0;i<3;i++){
+            p.setBrush(i==current?Qt::white:QColor(255,255,255,70));
             p.setPen(Qt::NoPen);
-            p.drawEllipse(bx+i*(dotR*2+spacing), by, dotR*2, dotR*2);
+            p.drawEllipse(bx+i*(dotR*2+spacing),by,dotR*2,dotR*2);
         }
     }
 
     QPixmap sheets[5];
     int current, frame, workCount;
     AnimState animState;
-    QTimer *animTimer, *sysTimer;
-    int cpuUsage;
-    long prevCpuTotal, prevCpuIdle;
+    QTimer *animTimer, *sysTimer, *msgTimer;
+    int cpuUsage; long prevCpuTotal, prevCpuIdle;
     QString currentTime;
+    int totalCoins, todayEarned;
+    QString lastDate, coinMsg;
 };
 
 #include "main.moc"
