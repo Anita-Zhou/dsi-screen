@@ -126,11 +126,11 @@ public:
         , totalCoins(0),todayEarned(0)
         , selectedSkill(-1),skillScrollRow(0)
     {
-        sheets[0].load("/home/bianbu/Desktop/dragon/idle.png");
-        sheets[1].load("/home/bianbu/Desktop/dragon/idle2heart.png");
-        sheets[2].load("/home/bianbu/Desktop/dragon/heart.png");
-        sheets[3].load("/home/bianbu/Desktop/dragon/idle2work.png");
-        sheets[4].load("/home/bianbu/Desktop/dragon/work.png");
+        sheets[0].load("./dragon/idle.png");
+        sheets[1].load("./dragon/idle2heart.png");
+        sheets[2].load("./dragon/heart.png");
+        sheets[3].load("./dragon/idle2work.png");
+        sheets[4].load("./dragon/work.png");
 
         skills[0]={"技能 1", 3,false};skills[1]={"技能 2", 5,false};
         skills[2]={"技能 3", 8,false};skills[3]={"技能 4",10,false};
