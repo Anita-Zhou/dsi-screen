@@ -65,7 +65,7 @@ protected:
 
 // ─── AnimState ──────────────────────────────────────────────────
 enum class AnimState{Idle,ToWork,Work,FromWork};
-static const int WORK_FRAMES=70; // ~10s at 143ms/tick
+static const int WORK_FRAMES=50; // ~10s at 200ms/tick (5fps)
 
 // ─── Settings icons ─────────────────────────────────────────────
 static void drawPerson(QPainter&p,QPointF c){
@@ -166,7 +166,7 @@ public slots:
             update(); return;
         }
         current=(current+(dir>0?1:2))%3;
-        if(current==1){animState=AnimState::Idle;frame=0;}
+        if(current==1){animState=AnimState::Idle;frame=0;animTimer->setInterval(143);}
         update();
     }
 
@@ -178,7 +178,7 @@ public slots:
                 int dx=bx+i*(dotR*2+spacing);
                 if(x>=dx-10&&x<=dx+dotR*2+10){
                     current=i;
-                    if(current==1){animState=AnimState::Idle;frame=0;}
+                    if(current==1){animState=AnimState::Idle;frame=0;animTimer->setInterval(143);}
                     update();return;
                 }
             }
@@ -197,7 +197,7 @@ public slots:
         if(current==1&&x>=250&&x<=550&&y>=90&&y<=390){
             earnCoins(2);
             if(animState==AnimState::Idle)
-            {animState=AnimState::ToWork;frame=0;workCount=0;}
+            {animState=AnimState::ToWork;frame=0;workCount=0;animTimer->setInterval(200);}
         }
         update();
     }
@@ -210,7 +210,7 @@ public slots:
         case AnimState::Work:
             frame=(frame+1)%10;
             if(++workCount>=WORK_FRAMES){animState=AnimState::FromWork;frame=7;}break;
-        case AnimState::FromWork: if(--frame<0){animState=AnimState::Idle;frame=0;}break;
+        case AnimState::FromWork: if(--frame<0){animState=AnimState::Idle;frame=0;animTimer->setInterval(143);}break;
         }
         update();
     }
