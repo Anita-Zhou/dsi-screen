@@ -37,12 +37,11 @@ protected:
             if(ev.type==EV_ABS){
                 if(ev.code==ABS_MT_POSITION_X) cx=ev.value;
                 if(ev.code==ABS_MT_POSITION_Y) cy=ev.value;
-                // latch start point on first valid position while finger is down
                 if(touching && sx<0 && cx>=0 && cy>=0){ sx=cx; sy=cy; }
             } else if(ev.type==EV_KEY&&ev.code==BTN_TOUCH){
                 if(ev.value==1){
                     touching=true;
-                    sx=-1; sy=-1;   // reset; position events will set it
+                    sx=-1; sy=-1;
                 } else if(ev.value==0&&touching){
                     touching=false;
                     if(cx>=0&&cy>=0&&sx>=0&&sy>=0){
@@ -56,7 +55,7 @@ protected:
                             else{emit tappedAt(cx,cy);lt=now;}
                         }
                     }
-                    cx=cy=sx=sy=-1;  // full reset so next gesture starts clean
+                    cx=cy=sx=sy=-1;
                 }
             }
         }
@@ -65,8 +64,8 @@ protected:
 };
 
 // ─── AnimState ──────────────────────────────────────────────────
-enum class AnimState{Idle,ToHeart,Heart,FromHeart,ToWork,Work,FromWork};
-static const int WORK_FRAMES=15*7;
+enum class AnimState{Idle,ToWork,Work,FromWork};
+static const int WORK_FRAMES=70; // ~10s at 143ms/tick
 
 // ─── Settings icons ─────────────────────────────────────────────
 static void drawPerson(QPainter&p,QPointF c){
@@ -126,11 +125,9 @@ public:
         , totalCoins(0),todayEarned(0)
         , selectedSkill(-1),skillScrollRow(0)
     {
-        sheets[0].load("./dragon/idle.png");
-        sheets[1].load("./dragon/idle2heart.png");
-        sheets[2].load("./dragon/heart.png");
-        sheets[3].load("./dragon/idle2work.png");
-        sheets[4].load("./dragon/work.png");
+        sheets[0].load("./dragon-new/idle.png");
+        sheets[1].load("./dragon-new/idle2work.png");
+        sheets[2].load("./dragon-new/work.png");
 
         skills[0]={"技能 1", 3,false};skills[1]={"技能 2", 5,false};
         skills[2]={"技能 3", 8,false};skills[3]={"技能 4",10,false};
@@ -163,8 +160,7 @@ public:
 public slots:
     void onSwipe(int dir){
         if(current==2){
-            // skills page: vertical swipe scrolls grid
-            int maxRow=((SKILL_COUNT+2)/3)-2; // total_rows - 2 visible rows
+            int maxRow=((SKILL_COUNT+2)/3)-2;
             if(dir==-1) skillScrollRow=qMin(skillScrollRow+1,maxRow);
             else         skillScrollRow=qMax(skillScrollRow-1,0);
             update(); return;
@@ -175,7 +171,6 @@ public slots:
     }
 
     void onTap(int x,int y){
-        // dot tap navigation (all screens)
         if(y>=height()-DOT_H){
             int dotR=7,spacing=24,totalW=3*dotR*2+2*spacing;
             int bx=(width()-totalW)/2;
@@ -191,7 +186,6 @@ public slots:
         if(current==1){
             if(x>=250&&x<=550&&y>=90&&y<=390){
                 earnCoins(1);
-                if(animState==AnimState::Idle){animState=AnimState::ToHeart;frame=0;}
             }
         } else if(current==2){
             handleSkillTap(x,y);
@@ -202,8 +196,7 @@ public slots:
     void onDoubleTap(int x,int y){
         if(current==1&&x>=250&&x<=550&&y>=90&&y<=390){
             earnCoins(2);
-            if(animState!=AnimState::ToWork&&animState!=AnimState::Work&&
-               animState!=AnimState::FromWork)
+            if(animState==AnimState::Idle)
             {animState=AnimState::ToWork;frame=0;workCount=0;}
         }
         update();
@@ -212,13 +205,10 @@ public slots:
     void nextFrame(){
         if(current!=1)return;
         switch(animState){
-        case AnimState::Idle:     frame=(frame+1)%18;break;
-        case AnimState::ToHeart:  if(++frame>=7){animState=AnimState::Heart;frame=0;}break;
-        case AnimState::Heart:    if(++frame>=17){animState=AnimState::FromHeart;frame=6;}break;
-        case AnimState::FromHeart:if(--frame<0){animState=AnimState::Idle;frame=0;}break;
+        case AnimState::Idle:     frame=(frame+1)%20;break;
         case AnimState::ToWork:   if(++frame>=8){animState=AnimState::Work;frame=0;workCount=0;}break;
         case AnimState::Work:
-            frame=(frame+1)%11;
+            frame=(frame+1)%10;
             if(++workCount>=WORK_FRAMES){animState=AnimState::FromWork;frame=7;}break;
         case AnimState::FromWork: if(--frame<0){animState=AnimState::Idle;frame=0;}break;
         }
@@ -312,7 +302,6 @@ private:
         QTextStream out(&f);for(int i=0;i<SKILL_COUNT;i++)out<<(skills[i].owned?1:0)<<(i<SKILL_COUNT-1?" ":"");
     }
     void handleSkillTap(int x,int y){
-        // buy button
         if(selectedSkill>=0&&buyBtnRect().contains(x,y)){
             Skill&sk=skills[selectedSkill];
             if(sk.owned){coinMsg="已拥有该技能";msgTimer->start(2000);return;}
@@ -320,7 +309,6 @@ private:
             totalCoins-=sk.price;sk.owned=true;saveCoins();saveSkills();
             coinMsg="购买成功！";msgTimer->start(2000);return;
         }
-        // tile
         if(y<gridTop()||y>gridBottom())return;
         for(int i=0;i<SKILL_COUNT;i++){
             if(tileRect(i,skillScrollRow).contains(x,y)){
@@ -347,7 +335,6 @@ private:
     void paintSkills(QPainter&p){
         p.fillRect(rect(),Qt::black);
 
-        // header
         QFont hf;hf.setPixelSize(17);p.setFont(hf);p.setPen(QColor(200,200,200));
         p.drawText(QRect(MX,0,400,HDR_H),Qt::AlignVCenter|Qt::AlignLeft,
                    QString("技能套餐    CPU %1%").arg(cpuUsage));
@@ -355,7 +342,6 @@ private:
         drawCoinBadge(p,width()-8,HDR_H/2);
         p.setPen(QColor(40,40,40));p.drawLine(0,HDR_H,width(),HDR_H);
 
-        // scroll indicator (right edge strip)
         int totalRows=(SKILL_COUNT+2)/3;
         if(totalRows>2){
             int stripH=gridBottom()-gridTop();
@@ -367,7 +353,6 @@ private:
             p.drawRoundedRect(QRect(width()-6,trackY,4,trackH),2,2);
         }
 
-        // clip to grid area
         p.setClipRect(0,gridTop(),width(),gridBottom()-gridTop());
 
         for(int i=0;i<SKILL_COUNT;i++){
@@ -399,7 +384,6 @@ private:
         }
         p.setClipping(false);
 
-        // bottom bar
         int barTop=height()-DOT_H-BAR_H;
         p.setPen(QColor(50,50,50));p.drawLine(0,barTop,width(),barTop);
         p.fillRect(QRect(0,barTop,width(),BAR_H),QColor(14,14,16));
@@ -441,16 +425,18 @@ private:
     void paintDragon(QPainter&p){
         p.fillRect(rect(),Qt::black);
         int si=0;
+        bool isTransition=(animState==AnimState::ToWork||animState==AnimState::FromWork);
         switch(animState){
-        case AnimState::Idle:                              si=0;break;
-        case AnimState::ToHeart:case AnimState::FromHeart: si=1;break;
-        case AnimState::Heart:                             si=2;break;
-        case AnimState::ToWork: case AnimState::FromWork:  si=3;break;
-        case AnimState::Work:                              si=4;break;
+        case AnimState::Idle:    si=0;break;
+        case AnimState::ToWork:
+        case AnimState::FromWork:si=1;break;
+        case AnimState::Work:    si=2;break;
         }
         if(!sheets[si].isNull()){
-            QPixmap px=sheets[si].copy(frame*300,0,300,380);
-            p.drawPixmap((width()-300)/2,(height()-380)/2,px);
+            int fw=isTransition?350:300;
+            int fh=380;
+            QPixmap px=sheets[si].copy(frame*fw,0,fw,fh);
+            p.drawPixmap((width()-fw)/2,(height()-fh)/2,px);
         }
         drawCoinBadge(p,width()-8,24);
         if(!coinMsg.isEmpty()){
@@ -508,7 +494,7 @@ private:
     }
 
     // ── Members ─────────────────────────────────────────────────
-    QPixmap sheets[5];
+    QPixmap sheets[3];
     Skill   skills[SKILL_COUNT];
     int     current,frame,workCount;
     AnimState animState;
